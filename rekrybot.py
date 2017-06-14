@@ -43,6 +43,10 @@ class Main:
         self.titles = {}
         self.dls = {}
 
+        self.tag_regex = r"\[athene-yrityssuhteet\]|\[atalent recruiting\]|avoin työpaikka|re:"
+        self.filler_regex = r"opiskeli\w*|mahdol\w*|kiinnost\w*|työmahdoll\w*|työpaikk\w*|rekrytoint\w*|kaks\w*"
+        self.symbol_regex = r"^(:|,|\?)"
+
         if self.parser.parse_messages(self.mboxfile):
             self.messages = self.parser.get_messages()
             self.titles = self.parser.get_titles()
@@ -57,7 +61,7 @@ class Main:
     def get_deadline(self, string):
 
         # Matches for "dl", "appl*" and "deadline"
-        dl_regex = r"(dl|appl.*\b|deadline)"
+        dl_regex = r"(dl|appl\w*\b|deadline)"
 
         # Matches for "1.1.", "01.01", "1th" and "asap"
         date_regex = r"((\d{1,2}\.\d{1,2}\.)|(\d{1,2}(st|nd|rd|th)))|(asap?)"
@@ -75,8 +79,7 @@ class Main:
             return "ASAP"
 
         # If the date row contains "dl" or "deadline", it's probably the application deadline
-        elif "dl" or "deadline" in re2_match.lower():
-            #print('match from dl and re2')
+        elif "dl" in re2_match.lower() or "deadline" in re2_match.lower():
             return self.parser.format_date(re2_match)
 
         # if still no match, do a cross search to each other's results
@@ -95,6 +98,9 @@ class Main:
         # Create all the tldr lines and save them to a variable for later
         lines = ""
         for i in self.messages.keys():
+            self.titles[i] = self.parser.strip_string(self.titles[i], self.tag_regex, self.filler_regex, self.symbol_regex)
+            if not self.titles[i]:
+                self.titles[i] = "Deleted whole subjectline"
             lines += self.parser.create_line(i+1, self.titles[i], "DL: " + self.get_deadline(self.messages[i]))
 
         # Create an empty file to write the message to
