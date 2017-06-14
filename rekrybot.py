@@ -41,7 +41,6 @@ class Main:
 
         self.messages = {}
         self.titles = {}
-        self.dls = {}
 
         self.tag_regex = r"\[athene-yrityssuhteet\]|\[atalent recruiting\]|avoin työpaikka|re:"
         self.filler_regex = r"opiskeli\w*|mahdol\w*|kiinnost\w*|työmahdoll\w*|työpaikk\w*|rekrytoint\w*|kaks\w*"
