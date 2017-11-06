@@ -27,37 +27,46 @@ a summary of recruitment messages.
 """
 
 import os, sys, re
-sys.path.insert(0, "/home/ville/code/pymailscanner")
-from pymailscanner import *
+sys.path.insert(0, "/home/ville/code/mailscanner")
+import mailscanner
+import configparser
+from email.message import EmailMessage
+import time
+import imaplib
 
 class Main:
 
     def __init__(self):
-        self.reader = EmailReader()
-        self.parser = EmailParser()
-        self.writer = EmailWriter()
 
-        self.mboxfile = self.reader.read_in(sys.argv[1])
+        self.config_path = os.path.abspath('.env/conf.ini')
 
-        self.messages = {}
-        self.titles = {}
+        self.config = configparser.ConfigParser()
+        self.config.read(self.config_path)
 
+        self.reader = mailscanner.ImapReader(self.config)
+
+        self.parser = mailscanner.Parser()
+
+
+        # Initialize IMAP connection
+        self.connection = self.reader.open_connection()
+
+        # List of subject-body tuples
+        self.messages = self.reader.fetch_all_messages(
+                self.connection,
+                'Recruitment',
+                True)
+
+        self.newline = r"\n"
         self.tag_regex = r"\[athene-yrityssuhteet\]|\[atalent recruiting\]|avoin työpaikka|re:"
-        self.filler_regex = r"opiskeli\w*|mahdol\w*|kiinnost\w*|työmahdoll\w*|työpaikk\w*|rekrytoint\w*|kaks\w*"
-        self.symbol_regex = r"^(:|,|\?)"
+        self.filler_regex = r"valmistu\w*|opiskeli\w*|mahdol\w*|loppuv\w*|miele\w*|kiinnost\w*|työmahdoll\w*|työpaikk\w*|rekrytoint\w*|kaks\w*|\w*paik\w*"
+        self.symbol_regex = r"^(:|,|\?)|(/)"
 
-        if self.parser.parse_messages(self.mboxfile):
-            self.messages = self.parser.get_messages()
-            self.titles = self.parser.get_titles()
-        else:
-            print("Couldn't load messages")
-            mboxfile.close()
-            sys.exit()
-
-        # Close the mbox file after reading in the data
-        self.mboxfile.close()
+        self.start = r"hei.*$|moi.*$"
+        self.end = r"(^[-]{3,})"
 
     def get_deadline(self, string):
+        """Attempts to find a deadline from string."""
 
         # Matches for "dl", "appl*" and "deadline"
         dl_regex = r"(dl|appl\w*\b|deadline)"
@@ -68,6 +77,7 @@ class Main:
         # Perform searches for both regular expressions against the same string
         re1_match = self.parser.scan_message(string, dl_regex)
         re2_match = self.parser.scan_message(string, date_regex)
+
 
         # If both match, it's the one
         if re1_match == re2_match:
@@ -94,45 +104,72 @@ class Main:
 
     def main(self):
 
-        # Create all the tldr lines and save them to a variable for later
+        # Full message body
+        body = ""
+
+        # TL;DR lines
         lines = ""
-        for i in self.messages.keys():
-            self.titles[i] = self.parser.strip_string(self.titles[i], self.tag_regex, self.filler_regex, self.symbol_regex)
-            if not self.titles[i]:
-                self.titles[i] = "Deleted whole subjectline"
-            lines += self.parser.create_line(i+1, self.titles[i], "DL: " + self.get_deadline(self.messages[i]))
 
-        # Create an empty file to write the message to
-        filename = self.writer.create_new_msg()
+        # The recruitment message
+        contents = ""
 
-        # Write the tldr section to the file
-        written_chars = self.writer.write_to_file(filename, lines)
-        #print("Wrote " + str(written_chars) + " characters to file: " + filename)
+        # Index is for tl;dr numbering
+        index = 1
 
-        # Append the message bodies to the file
-        for key in self.messages.keys():
-            self.writer.write_to_file(filename, "\n------\n" + lines.splitlines()[key] + "\n\n")
-            self.writer.write_to_file(filename, self.messages[key])
+        # Go through each item in messages and append to mail body
+        for i in self.messages:
 
-            # Converting the mbox file to plain text leaves * -signs all over the file. Remove them.
-            with open(filename, "r") as infile:
-                with open(filename + ".new", "w+") as outfile:
-                    data = infile.read()
-                    data = data.replace("*", "")
-                    outfile.write(data)
+            ################
+            # Mail subject #
+            ################
 
-        # Clean up
-        date = filename.replace(".txt", "").replace("msg-", "")
-        os.remove(filename)
-        os.rename(filename + ".new", "messages-" + date + ".txt")
+            subject_line = self.parser.strip_string(
+                    i[0],
+                    self.newline,
+                    self.tag_regex,
+                    self.filler_regex,
+                    self.symbol_regex)
 
-        # Debug data, if something wasn't written
-        if self.parser.skipped_bodies:
-            print("\nSkipped " + str(len(self.parser.skipped_bodies)) + " bodies, please check them manually.")
-            print(self.parser.skipped_bodies)
-        if self.parser.skipped_titles:
-            print("\nMissing " + str(len(self.parser.skipped_titles)) + " title(s), please check them manually.")
-            print(self.parser.skipped_titles)
+            if not subject_line:
+                subject_line = "Deleted whole subjectline"
+
+            # Form the Tl;DR line
+            line = self.parser.create_line(index,
+                                            subject_line,
+                                            "DL: " + self.get_deadline(i[1]))
+            lines += line
+
+            #############
+            # Mail body #
+            #############
+
+            # Append the recruitment message body to contents
+            contents += line + "\n\n" + i[1] + "\n\n\n\n----\n"
+
+            # Increment index by one and start over
+            index += 1
+
+        print(lines)
+
+        # Form the email body
+        body += lines + "\n\n-----\n" + contents
+
+        # Initialize a new message
+        msg = EmailMessage()
+
+        # Set email header
+        msg['Subject'] = 'Recruitment mail'
+        msg['From'] = 'rekrybot@athene.fi'
+        msg['To'] = 'rekry@athene.fi'
+
+        # Append TL;DR:
+        msg.set_content(body)
+
+        # Append the message to drafts
+        self.connection.append('Drafts', '',
+                imaplib.Time2Internaldate(time.time()),
+                str(msg).encode('UTF-8'))
+
 
 if __name__ == "__main__":
     Main().main()
