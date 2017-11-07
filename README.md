@@ -1,5 +1,5 @@
 # Rekrybot
 
-Uses Pymailscanner to read in an mbox-file of recruitment messages and
+Uses Mailscanner library to read recruitment messages from an IMAP mailbox and
 compiles an almost-ready weekly compilation message of recruitment ads for
 Athene recruitment mailing list.
