@@ -26,15 +26,24 @@ This program scans through a mbox file containing emails and attempts to build
 a summary of recruitment messages.
 """
 
-import os, sys, re
+import configparser
+import datetime
+from email.message import EmailMessage
+import imaplib
+import os
+import re
+import sys
+import time
+
 sys.path.insert(0, "/home/ville/code/mailscanner")
 import mailscanner
-import configparser
-from email.message import EmailMessage
-import time
-import imaplib
 
 class Main:
+    """Combines a bunch of email message into single newsletter.
+
+    Reads in all messages from Recruitment folder, creates a TL;DR
+    section from them and adds the message bodies in the end
+    """
 
     def __init__(self):
 
@@ -53,15 +62,21 @@ class Main:
 
         # List of subject-body tuples
         self.messages = self.reader.fetch_all_messages(
-                self.connection,
-                'Recruitment',
-                True)
+            self.connection,
+            'Recruitment',
+            True)
+
+
+        #######################
+        # Regular Expressions #
+        #######################
 
         self.newline = r"\n"
         self.tag_regex = r"\[athene-yrityssuhteet\]|\[atalent recruiting\]|avoin työpaikka|re:"
-        self.filler_regex = r"valmistu\w*|opiskeli\w*|mahdol\w*|loppuv\w*|miele\w*|kiinnost\w*|työmahdoll\w*|työpaikk\w*|rekrytoint\w*|kaks\w*|\w*paik\w*"
+        self.filler_regex = r"valmistu\w*|opiskeli\w*|mahdol\w*|" +\
+            r"loppuv\w*|miele\w*|kiinnost\w*|työmahdoll\w*" +\
+            r"|työpaikk\w*|rekrytoint\w*|kaks\w*|\w*paik\w*"
         self.symbol_regex = r"^(:|,|\?)|(/)"
-
         self.start = r"hei.*$|moi.*$"
         self.end = r"(^[-]{3,})"
 
@@ -103,6 +118,7 @@ class Main:
 
 
     def main(self):
+        """This executes everything described in module docstring."""
 
         # Full message body
         body = ""
@@ -124,19 +140,19 @@ class Main:
             ################
 
             subject_line = self.parser.strip_string(
-                    i[0],
-                    self.newline,
-                    self.tag_regex,
-                    self.filler_regex,
-                    self.symbol_regex)
+                i[0],
+                self.newline,
+                self.tag_regex,
+                self.filler_regex,
+                self.symbol_regex)
 
             if not subject_line:
                 subject_line = "Deleted whole subjectline"
 
             # Form the Tl;DR line
             line = self.parser.create_line(index,
-                                            subject_line,
-                                            "DL: " + self.get_deadline(i[1]))
+                                           subject_line,
+                                           "DL: " + self.get_deadline(i[1]))
             lines += line
 
             #############
@@ -148,8 +164,6 @@ class Main:
 
             # Increment index by one and start over
             index += 1
-
-        print(lines)
 
         # Form the email body
         body += lines + "\n\n-----\n" + contents
@@ -167,9 +181,30 @@ class Main:
 
         # Append the message to drafts
         self.connection.append('Drafts', '',
-                imaplib.Time2Internaldate(time.time()),
-                str(msg).encode('UTF-8'))
+                               imaplib.Time2Internaldate(time.time()),
+                               str(msg).encode('UTF-8'))
 
+        # Select all messages in recruitment
+        typ, [response] = self.connection.search(None, 'All')
+
+        # If something goes wrong, abort mission
+        if typ != 'OK':
+            raise RuntimeError(response)
+
+        msg_ids = ','.join(response.decode('utf-8').split(' '))
+
+        # Create a timestamp for archive creation
+        timestamp = datetime.date.today().isoformat()
+
+        # Create a new arhive mailbox for the messages
+        mailboxname = 'Recruitment/archive/' + timestamp
+        typ, response = self.connection.create(mailboxname)
+
+        # Copy the messages over to the archive
+        self.connection.copy(msg_ids, mailboxname)
+
+        # Close connection, we're done here
+        self.connection.close()
 
 if __name__ == "__main__":
     Main().main()
