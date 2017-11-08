@@ -34,8 +34,6 @@ import os
 import re
 import sys
 import time
-
-sys.path.insert(0, "/home/ville/code/mailscanner")
 import mailscanner
 
 class Main:
@@ -47,7 +45,8 @@ class Main:
 
     def __init__(self):
 
-        self.config_path = os.path.abspath('.env/conf.ini')
+        # Config file is expected to be at ~/.rekrybotrc
+        self.config_path = os.path.expanduser('~/.rekrybotrc')
 
         self.config = configparser.ConfigParser()
         self.config.read(self.config_path)
@@ -66,11 +65,7 @@ class Main:
             'Recruitment',
             True)
 
-
-        #######################
-        # Regular Expressions #
-        #######################
-
+        # Regular expressions used in filtering  messages
         self.newline = r"\n"
         self.tag_regex = r"\[athene-yrityssuhteet\]|\[atalent recruiting\]|avoin työpaikka|re:"
         self.filler_regex = r"valmistu\w*|opiskeli\w*|mahdol\w*|" +\
