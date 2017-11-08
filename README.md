@@ -1,8 +1,8 @@
 # Rekrybot
 
-Uses Mailscanner library to read recruitment messages from an IMAP mailbox and
-compiles an almost-ready weekly compilation message of recruitment ads for
-a recruitment mailing list.
+Uses the [mailscanner](https://github.com/coumbole/mailscanner) library
+to read recruitment messages from an IMAP mailbox and compiles them into
+a single summary email message.
 
 ### Contents
 
@@ -16,11 +16,9 @@ a recruitment mailing list.
 Rekrybot is especially optimized for aTalent Recruiting's messages.
 However, it should be able to figure out other generic messages as well.
 
-For now, e.g. adding more filters for parsing the subject line etc.
-requires you to know something about regex and python.
-
-In the future, there could be a web based UI
-
+For now, e.g. adding more filters for parsing the subject line etc. is a
+little bit labourious and requires you to know something about regex and
+python. In the future there could be a browser based UI.
 
 ## Usage
 
