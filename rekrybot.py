@@ -1,40 +1,18 @@
 #!/usr/bin/env python3
 
 """
-Author: Ville Kumpulainen
-
-MIT License:
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-This program scans through a mbox file containing emails and attempts to build
-a summary of recruitment messages.
+Author: Ville Kumpulainen 2017
+License: GNU GPL v3.0
 """
 
-import configparser
-import datetime
-from email.message import EmailMessage
-import imaplib
 import os
 import re
-import sys
 import time
+import imaplib
+import datetime
 import mailscanner
+import configparser
+from email.message import EmailMessage
 
 class Main:
     """Combines a bunch of email message into single newsletter.
@@ -84,12 +62,16 @@ class Main:
         # Matches for "1.1.", "01.01", "1th" and "asap"
         date_regex = r"((\d{1,2}\.\d{1,2}\.)|(\d{1,2}(st|nd|rd|th)))|(asap?)"
 
-        # Perform searches for both regular expressions against the same string
+        # Tries to find a line from the message that contains words
+        # "dl", "apply" or "deadline"
         re1_match = self.parser.scan_message(string, dl_regex)
+
+        # Tries to find a line from the message that contains a date.
         re2_match = self.parser.scan_message(string, date_regex)
 
 
-        # If both match, it's the one
+        # If a single line contains something about a deadline and a
+        # date, it's probably the deadline date
         if re1_match == re2_match:
             return self.parser.format_date(re1_match)
 
@@ -113,27 +95,32 @@ class Main:
 
 
     def main(self):
-        """This executes everything described in module docstring."""
+        """This executes the things described in the class description.
 
-        # Full message body
+        First of all, Rekrybot loops through all found messages, and
+        tries to form a summary line about the job posting, such as:
+
+        2: Company name: Some junior position - DL: 15.11.
+
+        It appends these to the beginning of the newsletter, followed by
+        all the message bodies of the individual recruitment messages.
+
+        Finally, it creates a blank email message, sets it header data
+        accordingly (subject, sender, recipient) and appends the
+        previously created content to the message body.
+        """
+
         body = ""
-
-        # TL;DR lines
         lines = ""
-
-        # The recruitment message
         contents = ""
 
-        # Index is for tl;dr numbering
+        # Index is for tl;dr numbering, thus starting from 1
         index = 1
 
         # Go through each item in messages and append to mail body
         for i in self.messages:
 
-            ################
-            # Mail subject #
-            ################
-
+            # Mail subject
             subject_line = self.parser.strip_string(
                 i[0],
                 self.newline,
@@ -144,21 +131,21 @@ class Main:
             if not subject_line:
                 subject_line = "Deleted whole subjectline"
 
-            # Form the Tl;DR line
+            # Form the summary line
             line = self.parser.create_line(index,
                                            subject_line,
                                            "DL: " + self.get_deadline(i[1]))
+
             lines += line
 
-            #############
-            # Mail body #
-            #############
 
-            # Append the recruitment message body to contents
+            # Append a recruitment message's body to the contents with
+            # the oneliner in the beginning and some whitespace in the end
             contents += line + "\n\n" + i[1] + "\n\n\n\n----\n"
 
             # Increment index by one and start over
             index += 1
+
 
         # Form the email body
         body += lines + "\n\n-----\n" + contents
@@ -200,6 +187,11 @@ class Main:
 
         # Close connection, we're done here
         self.connection.close()
+
+        # Note to user: You can now delete all messages in the
+        # Recruitment mailbox. This program does not delete anything,
+        # just in case. If no errors arose, copies of the
+        # messages exist in Recruitment/archive/date submailbox.
 
 if __name__ == "__main__":
     Main().main()
