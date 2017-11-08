@@ -22,8 +22,9 @@ python. In the future there could be a browser based UI.
 
 ## Usage
 
-In order to use Rekrybot yourself, you need to do the tasks listed
-below. More specific instruction can be found below.
+In order to use Rekrybot yourself, you need to complete the following
+tasks.
+
 
 - [Installation](#installation)
 - [Setup email](#setup-email)
@@ -34,8 +35,7 @@ below. More specific instruction can be found below.
 
 #### Installation
 
-**Install prerequisities**
-
+Install prerequisities
 - Python 3.4+
 - Git
 
@@ -65,7 +65,8 @@ and add some messages there.
 #### Update configurations
 
 Open .rekrybotrc with your favourite text editor and update the
-credentials etc:
+credentials.
+
 `vim .rekrybotrc`
 
 Hostname is the IMAP server's hostname. For example in my case, I'm
@@ -74,7 +75,8 @@ using my Aalto university provided email, so my hostname is
 
 The other fields should be self-explanatory.
 
-Once the data is updated, move it to your home directory:
+Once the data is updated, move it to your home directory.
+
 `mv .rekrybotrc ~/`
 
 
@@ -83,13 +85,12 @@ Once the data is updated, move it to your home directory:
 Now you're ready to start using rekrybot. Make sure you've got the
 Recruitment mailbox (folder) set up, some messages in there.
 
-Now simply run `./rekrybot.py`
-
-Then check out your email. You should have a new draft compiled from all
-the emails in Recruitment folder.
+Now simply run `./rekrybot.py` and check your email. You should have a
+new draft compiled from all the emails in Recruitment folder.
 
 You can now go ahead an delete the contents of Recruitment folder.
-Rekrybot doesn't delete any messages at all, just to be safe.
+Rekrybot doesn't delete any messages at all just to be safe, but it
+copies the used messages to a timestamped archive folder.
 
 
 #### Aftercare
