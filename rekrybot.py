@@ -44,11 +44,11 @@ class Main:
             True)
 
         # Regular expressions used in filtering  messages
-        self.newline = r"\n"
-        self.tag_regex = r"\[athene-yrityssuhteet\]|\[atalent recruiting\]|avoin työpaikka|re:"
+        self.whitespacechars = r"(\n|\r|\t)"
+        self.tag_regex = r"\[.*\]|avoin työpaikka|re:"
         self.filler_regex = r"valmistu\w*|opiskeli\w*|mahdol\w*|" +\
-            r"loppuv\w*|miele\w*|kiinnost\w*|työmahdoll\w*" +\
-            r"|työpaikk\w*|rekrytoint\w*|kaks\w*|\w*paik\w*"
+            r"loppuv\w*|miele\w*|kiinnost\w*|kiinos\w*|upe\w*|työmahdoll\w*" +\
+            r"|työpaikk\w*|rekrytoint\w*|usei\w*|kaks\w*|\w*paik\w*"
         self.symbol_regex = r"^(:|,|\?)|(/)"
         self.start = r"hei.*$|moi.*$"
         self.end = r"(^[-]{3,})"
@@ -123,7 +123,7 @@ class Main:
             # Mail subject
             subject_line = self.parser.strip_string(
                 i[0],
-                self.newline,
+                self.whitespacechars,
                 self.tag_regex,
                 self.filler_regex,
                 self.symbol_regex)
